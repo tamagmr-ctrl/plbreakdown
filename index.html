@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PL分解帳 ― 損益計算書のしくみを見る</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF1EA;
+    --paper-deep:#E4E8DE;
+    --card:#FBFAF6;
+    --ink:#16263B;
+    --ink-soft:#4A5A6B;
+    --ink-faint:#8A93A0;
+    --gold:#AD7C24;
+    --gold-soft:#E8D9B5;
+    --teal:#2F6F62;
+    --teal-soft:#D9E7E1;
+    --rust:#AE4E3B;
+    --rust-soft:#F1DDD5;
+    --line:#C7CFC0;
+    --seal:#A6362A;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      repeating-linear-gradient(180deg, rgba(22,38,59,0.028) 0px, rgba(22,38,59,0.028) 1px, transparent 1px, transparent 34px),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
+    padding: 40px 18px 90px;
+    line-height:1.7;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  .mono{font-family:'JetBrains Mono', 'Zen Kaku Gothic New', monospace;}
+
+  /* ---- Header ---- */
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:24px; border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:8px;
+    flex-wrap:wrap;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; letter-spacing:0.18em; font-size:11px;
+    color:var(--ink-soft); text-transform:uppercase; margin:0 0 10px;
+  }
+  h1{
+    font-family:'Shippori Mincho', serif; font-weight:800; font-size:clamp(28px,4.4vw,44px);
+    margin:0; letter-spacing:0.03em; line-height:1.35;
+  }
+  h1 small{display:block; font-size:0.42em; font-weight:500; color:var(--ink-soft); letter-spacing:0.08em; margin-top:6px;}
+  .seal{
+    width:74px; height:74px; border-radius:50%; border:2.4px solid var(--seal); color:var(--seal);
+    display:flex; align-items:center; justify-content:center; text-align:center; flex-shrink:0;
+    font-family:'Shippori Mincho', serif; font-weight:700; font-size:13px; letter-spacing:0.12em;
+    transform:rotate(-6deg); line-height:1.3; writing-mode:vertical-rl; padding:6px 4px;
+  }
+
+  .lede{
+    font-size:15.5px; color:var(--ink-soft); max-width:680px; margin:22px 0 40px;
+  }
+
+  /* ---- Section shell ---- */
+  section{margin-bottom:52px;}
+  .section-head{display:flex; align-items:baseline; gap:14px; margin-bottom:18px;}
+  .section-num{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--gold); letter-spacing:0.1em;}
+  h2{
+    font-family:'Shippori Mincho', serif; font-size:21px; font-weight:700; margin:0;
+    letter-spacing:0.02em;
+  }
+  .section-sub{color:var(--ink-faint); font-size:13px; margin-left:auto; text-align:right;}
+
+  /* ---- Input panel ---- */
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 28px; box-shadow:0 1px 0 rgba(22,38,59,0.05);
+  }
+  .grid-inputs{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:26px 32px;
+  }
+  .field label{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-size:13px; font-weight:700; margin-bottom:8px;
+  }
+  .field label .val{
+    font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--gold); font-weight:700;
+  }
+  .field .hint{font-size:11.5px; color:var(--ink-faint); margin-top:6px;}
+  input[type=range]{
+    -webkit-appearance:none; width:100%; height:3px; background:var(--line); outline:none; border-radius:2px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--ink); cursor:pointer; border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--ink);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:15px; height:15px; border-radius:50%; background:var(--ink); cursor:pointer; border:2px solid var(--paper);
+  }
+  .field.cost input[type=range]::-webkit-slider-thumb{background:var(--rust); box-shadow:0 0 0 1px var(--rust);}
+  .field.cost input[type=range]::-moz-range-thumb{background:var(--rust);}
+  .field.cost label .val{color:var(--rust);}
+  .unit-note{font-size:12px; color:var(--ink-faint); margin-top:22px; text-align:right;}
+
+  /* ---- Waterfall charts ---- */
+  .charts-row{display:grid; grid-template-columns:1fr 1fr; gap:26px;}
+  @media (max-width:860px){.charts-row{grid-template-columns:1fr;}}
+  .chart-card{background:var(--card); border:1px solid var(--line); padding:22px 22px 10px;}
+  .chart-title{font-family:'Shippori Mincho', serif; font-weight:700; font-size:15.5px; margin:0 0 2px;}
+  .chart-desc{font-size:12px; color:var(--ink-faint); margin:0 0 14px;}
+  svg{width:100%; height:auto; display:block; overflow:visible;}
+  .bar-label{font-family:'JetBrains Mono', monospace; font-size:11px; fill:var(--ink-soft);}
+  .bar-value{font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:700;}
+  .axis-line{stroke:var(--line); stroke-width:1;}
+
+  .match-row{
+    display:flex; align-items:center; gap:10px; justify-content:center; margin:18px 0 6px;
+    font-size:12.5px; color:var(--ink-soft);
+  }
+  .match-row .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);}
+
+  /* ---- Metric cards ---- */
+  .metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line);}
+  .metric{background:var(--card); padding:20px 20px 18px;}
+  .metric .m-label{font-size:12px; color:var(--ink-soft); margin-bottom:8px;}
+  .metric .m-value{font-family:'JetBrains Mono', monospace; font-weight:700; font-size:23px; color:var(--ink);}
+  .metric .m-value.pos{color:var(--teal);}
+  .metric .m-value.neg{color:var(--rust);}
+  .metric .m-sub{font-size:11px; color:var(--ink-faint); margin-top:6px;}
+
+  /* ---- Glossary ---- */
+  .glossary{border-top:1px solid var(--line);}
+  .g-item{border-bottom:1px solid var(--line);}
+  .g-item summary{
+    cursor:pointer; list-style:none; padding:16px 4px; display:flex; align-items:center; gap:16px;
+    font-weight:700; font-size:14.5px;
+  }
+  .g-item summary::-webkit-details-marker{display:none;}
+  .g-item summary .tag{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--card);
+    background:var(--ink-soft); padding:2px 7px; border-radius:2px; flex-shrink:0;
+  }
+  .g-item summary .plus{margin-left:auto; font-family:'JetBrains Mono', monospace; color:var(--ink-faint); transition:transform .2s;}
+  .g-item[open] summary .plus{transform:rotate(45deg);}
+  .g-item .g-body{padding:0 4px 18px 60px; font-size:13.5px; color:var(--ink-soft); max-width:680px;}
+
+  footer{margin-top:60px; padding-top:18px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-faint); text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">PROFIT &amp; LOSS BREAKDOWN — 経理スペシャリスト監修</p>
+      <h1>PL分解帳<small>売上高から営業利益まで、数字のつながりを手を動かして掴む</small></h1>
+    </div>
+    <div class="seal">損益一致</div>
+  </header>
+
+  <p class="lede">
+    スライダーを動かすと、下の2枚の分解図が同時に動きます。左は「変動費・固定費」で分ける<b>管理会計（原価計算）の見方</b>、右は「売上原価・販管費」で分ける<b>財務会計（決算書）の見方</b>です。分け方は違っても、たどり着く<b>営業利益</b>は同じ数字になる——それがこのアプリで体感してほしい一番のポイントです。
+  </p>
+
+  <!-- ============ INPUT PANEL ============ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>数字を入れる</h2>
+      <span class="section-sub">単位：百万円</span>
+    </div>
+    <div class="panel">
+      <div class="grid-inputs">
+        <div class="field">
+          <label>売上高 <span class="val mono" id="v-sales">500</span></label>
+          <input type="range" id="sales" min="100" max="1200" step="10" value="500">
+          <div class="hint">会社が1年間に稼いだ総額。すべての起点。</div>
+        </div>
+        <div class="field cost">
+          <label>変動費 <span class="val mono" id="v-varcost">200</span></label>
+          <input type="range" id="varcost" min="0" max="800" step="10" value="200">
+          <div class="hint">材料費・仕入・外注費など、売上に比例して増減する費用。</div>
+        </div>
+        <div class="field cost">
+          <label>固定費（その他） <span class="val mono" id="v-fixcost">180</span></label>
+          <input type="range" id="fixcost" min="0" max="600" step="10" value="180">
+          <div class="hint">人件費・家賃など、売上に関係なくかかる費用（償却費を除く）。</div>
+        </div>
+        <div class="field cost">
+          <label>償却費 <span class="val mono" id="v-dep">40</span></label>
+          <input type="range" id="dep" min="0" max="200" step="5" value="40">
+          <div class="hint">設備投資などを費用に配分したもの。固定費の一種だが、現金は出ていかない。</div>
+        </div>
+        <div class="field cost">
+          <label>売上原価 <span class="val mono" id="v-cogs">260</span></label>
+          <input type="range" id="cogs" min="0" max="900" step="10" value="260">
+          <div class="hint">決算書上の原価（変動費＋製造にかかる固定費が目安）。</div>
+        </div>
+      </div>
+      <p class="unit-note">※ 説明用の簡易モデルです。実際の決算書では勘定科目の分類がより細かくなります。</p>
+    </div>
+  </section>
+
+  <!-- ============ CHARTS ============ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>2つの視点で分解する</h2>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <p class="chart-title">管理会計ビュー（変動費・固定費）</p>
+        <p class="chart-desc">利益がいくら売上に比例して増えるか＝限界利益率が見える分け方</p>
+        <svg id="chart-cvp" viewBox="0 0 480 300"></svg>
+      </div>
+      <div class="chart-card">
+        <p class="chart-title">財務会計ビュー（売上原価・販管費）</p>
+        <p class="chart-desc">決算書（損益計算書）に実際に並ぶ分け方</p>
+        <svg id="chart-fin" viewBox="0 0 480 300"></svg>
+      </div>
+    </div>
+    <div class="match-row"><span class="dot"></span> どちらの図も、最後は同じ「営業利益」に到達します</div>
+  </section>
+
+  <!-- ============ METRICS ============ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2>そこから読み取れる指標</h2>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="m-label">限界利益率</div>
+        <div class="m-value" id="m-cmr">—</div>
+        <div class="m-sub">売上が1増えたとき、利益が何割増えるか</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">営業利益率</div>
+        <div class="m-value" id="m-opm">—</div>
+        <div class="m-sub">売上高に対する本業の儲けの割合</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">損益分岐点売上高</div>
+        <div class="m-value" id="m-bep">—</div>
+        <div class="m-sub">利益がちょうどゼロになる売上高</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">経営安全余裕率</div>
+        <div class="m-value" id="m-margin">—</div>
+        <div class="m-sub">今の売上が損益分岐点よりどれだけ上か</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">EBITDA（概算）</div>
+        <div class="m-value" id="m-ebitda">—</div>
+        <div class="m-sub">営業利益＋償却費。現金ベースの稼ぐ力の目安</div>
+      </div>
+      <div class="metric">
+        <div class="m-label">売上総利益率</div>
+        <div class="m-value" id="m-gpm">—</div>
+        <div class="m-sub">売上高に対する粗利の割合</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GLOSSARY ============ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <h2>用語のつながり</h2>
+    </div>
+    <div class="glossary">
+      <details class="g-item" open>
+        <summary><span class="tag">売上高</span>すべての起点<span class="plus">＋</span></summary>
+        <div class="g-body">商品やサービスを売って得た金額の総額。ここから費用を引いていくことで、段階ごとの利益（売上総利益・限界利益・営業利益）が計算されます。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">売上総利益</span>いわゆる「粗利」<span class="plus">＋</span></summary>
+        <div class="g-body">売上高から<b>売上原価</b>（仕入や製造にかかった費用）を引いたもの。「この商品・サービス自体でどれだけ儲かっているか」を表す、財務会計（決算書）での最初の利益段階です。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">限界利益</span>もう一つの粗利<span class="plus">＋</span></summary>
+        <div class="g-body">売上高から<b>変動費</b>（売上に比例して増減する費用）だけを引いたもの。売上原価と似ていますが、区切り方が「原価か販管費か」ではなく「変動費か固定費か」である点が違います。値引きや量産の意思決定など、社内の管理会計でよく使われます。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">変動費</span>売上に比例する費用<span class="plus">＋</span></summary>
+        <div class="g-body">材料費、仕入原価、販売手数料など、売れば売るほど増える費用。売上高から変動費を引くと限界利益になります。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">固定費</span>売上に関係ない費用<span class="plus">＋</span></summary>
+        <div class="g-body">人件費、家賃、保険料、そして償却費など、売上の増減に関わらずほぼ一定額かかる費用。限界利益からこの固定費を引くと、最終的な<b>営業利益</b>になります。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">償却費</span>現金の出ない固定費<span class="plus">＋</span></summary>
+        <div class="g-body">建物や機械などへの投資額を、使用する期間にわたって少しずつ費用として計上したもの（減価償却費）。固定費の一部ですが、その期に実際の現金支出があるわけではないのが特徴です。そのため営業利益に償却費を足し戻した「EBITDA」は、現金ベースでの稼ぐ力の目安として使われます。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">営業利益</span>本業の儲け<span class="plus">＋</span></summary>
+        <div class="g-body">会社の本業でどれだけ利益が出たかを示す数字。<br>管理会計では「限界利益 − 固定費」、財務会計では「売上総利益 − 販管費」として計算されますが、どちらの道を通っても同じ金額にたどり着きます。</div>
+      </details>
+    </div>
+  </section>
+
+  <footer>PL分解帳 — 社内の学習・理解促進を目的とした簡易シミュレーターです。実際の経営判断には正式な財務諸表をご確認ください。</footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ids = ['sales','varcost','fixcost','dep','cogs'];
+const fmt = n => Math.round(n).toLocaleString('ja-JP');
+const pct = n => (n*100).toFixed(1) + '%';
+
+function readInputs(){
+  const sales = +$('sales').value;
+  const varcost = +$('varcost').value;
+  const fixcost = +$('fixcost').value;
+  const dep = +$('dep').value;
+  const cogs = +$('cogs').value;
+  return {sales, varcost, fixcost, dep, cogs};
+}
+
+function compute(){
+  const {sales, varcost, fixcost, dep, cogs} = readInputs();
+  const contribution = sales - varcost;               // 限界利益
+  const fixedTotal = fixcost + dep;                    // 固定費合計
+  const opProfit = contribution - fixedTotal;           // 営業利益
+  const grossProfit = sales - cogs;                     // 売上総利益
+  const sgna = grossProfit - opProfit;                  // 販管費（逆算）
+  const cmRatio = sales !== 0 ? contribution / sales : 0;
+  const opRatio = sales !== 0 ? opProfit / sales : 0;
+  const gpRatio = sales !== 0 ? grossProfit / sales : 0;
+  const bep = cmRatio > 0 ? fixedTotal / cmRatio : NaN;
+  const marginOfSafety = (sales > 0 && !isNaN(bep)) ? (sales - bep) / sales : NaN;
+  const ebitda = opProfit + dep;
+  return {sales, varcost, fixcost, dep, cogs, contribution, fixedTotal, opProfit,
+          grossProfit, sgna, cmRatio, opRatio, gpRatio, bep, marginOfSafety, ebitda};
+}
+
+function syncLabels(){
+  $('v-sales').textContent = fmt($('sales').value);
+  $('v-varcost').textContent = fmt($('varcost').value);
+  $('v-fixcost').textContent = fmt($('fixcost').value);
+  $('v-dep').textContent = fmt($('dep').value);
+  $('v-cogs').textContent = fmt($('cogs').value);
+}
+
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+// steps: {label, delta, kind: 'start'|'increase'|'decrease'|'total', color}
+function drawWaterfall(svgId, steps){
+  const svg = $(svgId);
+  svg.innerHTML = '';
+  const W = 480, H = 300;
+  const padL = 34, padR = 10, padT = 26, padB = 40;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = steps.length;
+  const gap = 14;
+  const barW = (plotW - gap*(n-1)) / n;
+
+  const maxVal = Math.max(...steps.map(s => Math.max(s.runStart, s.runEnd)), 1);
+  const minVal = Math.min(0, ...steps.map(s => Math.min(s.runStart, s.runEnd)));
+  const range = (maxVal - minVal) || 1;
+  const y = v => padT + plotH - ((v - minVal) / range) * plotH;
+  const zeroY = y(0);
+
+  svg.appendChild(el('line', {x1:padL, y1:zeroY, x2:W-padR, y2:zeroY, class:'axis-line'}));
+
+  steps.forEach((s, i) => {
+    const x = padL + i*(barW+gap);
+    const top = y(Math.max(s.runStart, s.runEnd));
+    const bottom = y(Math.min(s.runStart, s.runEnd));
+    const h = Math.max(bottom - top, 1.5);
+
+    const rect = el('rect', {
+      x: x, y: top, width: barW, height: h,
+      fill: s.color, opacity: s.kind==='decrease' ? 0.88 : 1,
+      rx: 1
+    });
+    svg.appendChild(rect);
+
+    if(s.kind==='decrease' && s.pattern){
+      rect.setAttribute('fill', s.color);
+      rect.setAttribute('stroke', '#fff');
+      rect.setAttribute('stroke-width', '0');
+    }
+
+    // connector line to next bar
+    if(i < n-1){
+      const nx = padL + (i+1)*(barW+gap);
+      const connY = y(s.runEnd);
+      svg.appendChild(el('line', {
+        x1: x+barW, y1: connY, x2: nx, y2: connY,
+        stroke:'#C7CFC0', 'stroke-width':1, 'stroke-dasharray':'2,2'
+      }));
+    }
+
+    // value label
+    const valY = s.kind==='decrease' ? top - 6 : top - 6;
+    const valText = el('text', {
+      x: x + barW/2, y: valY, 'text-anchor':'middle', class:'bar-value',
+      fill: s.kind==='decrease' ? '#AE4E3B' : (s.kind==='total' ? '#2F6F62' : '#16263B')
+    });
+    valText.textContent = (s.kind==='decrease' ? '−' : '') + fmt(Math.abs(s.delta));
+    svg.appendChild(valText);
+
+    // category label
+    const labText = el('text', {
+      x: x + barW/2, y: H - padB + 16, 'text-anchor':'middle', class:'bar-label'
+    });
+    // wrap long labels onto two lines by splitting on space if needed
+    const words = s.label;
+    labText.textContent = words;
+    svg.appendChild(labText);
+  });
+}
+
+function buildCvpSteps(d){
+  const steps = [];
+  let run = 0;
+  steps.push({label:'売上高', delta:d.sales, runStart:0, runEnd:d.sales, kind:'start', color:'#AD7C24'});
+  run = d.sales;
+  steps.push({label:'変動費', delta:-d.varcost, runStart:run, runEnd:run-d.varcost, kind:'decrease', color:'#AE4E3B'});
+  run -= d.varcost;
+  steps.push({label:'限界利益', delta:run, runStart:0, runEnd:run, kind:'total', color:'#2F6F62'});
+  steps.push({label:'固定費', delta:-d.fixcost, runStart:run, runEnd:run-d.fixcost, kind:'decrease', color:'#AE4E3B'});
+  run -= d.fixcost;
+  steps.push({label:'償却費', delta:-d.dep, runStart:run, runEnd:run-d.dep, kind:'decrease', color:'#C98A79'});
+  run -= d.dep;
+  steps.push({label:'営業利益', delta:run, runStart:0, runEnd:run, kind:'total', color:'#2F6F62'});
+  return steps;
+}
+
+function buildFinSteps(d){
+  const steps = [];
+  let run = 0;
+  steps.push({label:'売上高', delta:d.sales, runStart:0, runEnd:d.sales, kind:'start', color:'#AD7C24'});
+  run = d.sales;
+  steps.push({label:'売上原価', delta:-d.cogs, runStart:run, runEnd:run-d.cogs, kind:'decrease', color:'#AE4E3B'});
+  run -= d.cogs;
+  steps.push({label:'売上総利益', delta:run, runStart:0, runEnd:run, kind:'total', color:'#2F6F62'});
+  steps.push({label:'販管費', delta:-d.sgna, runStart:run, runEnd:run-d.sgna, kind:'decrease', color:'#AE4E3B'});
+  run -= d.sgna;
+  steps.push({label:'営業利益', delta:run, runStart:0, runEnd:run, kind:'total', color:'#2F6F62'});
+  return steps;
+}
+
+function updateMetrics(d){
+  $('m-cmr').textContent = pct(d.cmRatio);
+  $('m-opm').textContent = pct(d.opRatio);
+  $('m-opm').className = 'm-value ' + (d.opProfit >= 0 ? 'pos' : 'neg');
+  $('m-bep').textContent = isFinite(d.bep) ? fmt(d.bep) : '—';
+  $('m-margin').textContent = isFinite(d.marginOfSafety) ? pct(d.marginOfSafety) : '—';
+  $('m-margin').className = 'm-value ' + (d.marginOfSafety >= 0 ? 'pos' : 'neg');
+  $('m-ebitda').textContent = fmt(d.ebitda);
+  $('m-gpm').textContent = pct(d.gpRatio);
+}
+
+function render(){
+  syncLabels();
+  const d = compute();
+  drawWaterfall('chart-cvp', buildCvpSteps(d));
+  drawWaterfall('chart-fin', buildFinSteps(d));
+  updateMetrics(d);
+}
+
+ids.forEach(id => $(id).addEventListener('input', render));
+render();
+</script>
+</body>
+</html>
