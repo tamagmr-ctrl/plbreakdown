@@ -148,6 +148,39 @@
   .g-item[open] summary .plus{transform:rotate(45deg);}
   .g-item .g-body{padding:0 4px 18px 60px; font-size:13.5px; color:var(--ink-soft); max-width:680px;}
 
+  /* ---- Asset / depreciation section ---- */
+  .method-toggle{display:inline-flex; border:1px solid var(--ink); border-radius:2px; overflow:hidden; margin-bottom:4px;}
+  .method-toggle button{
+    appearance:none; border:none; background:var(--card); color:var(--ink);
+    font-family:'Zen Kaku Gothic New', sans-serif; font-size:12.5px; font-weight:700;
+    padding:8px 16px; cursor:pointer; border-right:1px solid var(--ink);
+  }
+  .method-toggle button:last-child{border-right:none;}
+  .method-toggle button.active{background:var(--ink); color:var(--paper);}
+  .asset-grid{display:grid; grid-template-columns:1.1fr 1fr; gap:26px; align-items:start;}
+  @media (max-width:860px){.asset-grid{grid-template-columns:1fr;}}
+  .legend{display:flex; gap:18px; font-size:11.5px; color:var(--ink-soft); margin:4px 0 10px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:12px; height:3px; display:inline-block; border-radius:2px;}
+  .sync-row{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    background:var(--teal-soft); border:1px solid var(--teal); padding:14px 18px; margin-top:16px;
+  }
+  .sync-row .copy{font-size:13px; color:var(--ink);}
+  .sync-row .copy b{font-family:'JetBrains Mono', monospace; color:var(--teal); font-size:15px;}
+  .sync-btn{
+    appearance:none; border:1px solid var(--teal); background:var(--teal); color:#fff;
+    font-family:'Zen Kaku Gothic New', sans-serif; font-weight:700; font-size:12.5px;
+    padding:9px 16px; border-radius:2px; cursor:pointer; white-space:nowrap;
+  }
+  .sync-btn:hover{opacity:0.9;}
+  .asset-metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); margin-top:18px;}
+  .asset-metrics .metric{padding:17px 18px;}
+  .asset-note{font-size:12px; color:var(--ink-faint); margin-top:14px; line-height:1.8;}
+  .flag{display:inline-block; padding:1px 7px; border-radius:2px; font-size:10.5px; font-weight:700; margin-left:8px; vertical-align:1px;}
+  .flag.ok{background:var(--teal-soft); color:var(--teal);}
+  .flag.warn{background:var(--rust-soft); color:var(--rust);}
+
   footer{margin-top:60px; padding-top:18px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-faint); text-align:center;}
 </style>
 </head>
@@ -266,10 +299,88 @@
     </div>
   </section>
 
-  <!-- ============ GLOSSARY ============ -->
+  <!-- ============ FIXED ASSETS / DEPRECIATION (RENTAL BUSINESS) ============ -->
   <section>
     <div class="section-head">
       <span class="section-num">04</span>
+      <h2>固定資産と減価償却 ― レンタル事業の場合</h2>
+      <span class="section-sub">単位：百万円</span>
+    </div>
+    <p class="lede" style="margin:0 0 20px;">
+      レンタル業は「貸す対象の設備・機材そのもの」が固定資産になります。購入時にまとまった支出（投資）をしますが、PL上は一度に費用計上せず、使用する期間（耐用年数）に分けて<b>償却費</b>として毎年計上します。ここで試算した年間償却費は、上の「①数字を入れる」の償却費スライダーにそのまま反映できます。
+    </p>
+    <div class="panel">
+      <div class="asset-grid">
+        <div>
+          <div class="grid-inputs" style="grid-template-columns:1fr; gap:22px;">
+            <div class="field">
+              <label>資産取得価額（レンタル資産の合計） <span class="val mono" id="v-assetCost">400</span></label>
+              <input type="range" id="assetCost" min="50" max="2000" step="10" value="400">
+              <div class="hint">購入したレンタル機材・設備の取得費用の合計。</div>
+            </div>
+            <div class="field">
+              <label>耐用年数 <span class="val mono" id="v-assetLife">5</span> 年</label>
+              <input type="range" id="assetLife" min="2" max="15" step="1" value="5">
+              <div class="hint">その資産を使える（費用配分する）年数。</div>
+            </div>
+            <div class="field">
+              <label>想定稼働率 <span class="val mono" id="v-utilRate">75</span>％</label>
+              <input type="range" id="utilRate" min="30" max="100" step="1" value="75">
+              <div class="hint">資産が実際に貸し出されている割合。償却費は稼働率に関係なく一定額かかります。</div>
+            </div>
+          </div>
+          <div style="margin-top:22px;">
+            <div style="font-size:13px; font-weight:700; margin-bottom:8px;">償却方法</div>
+            <div class="method-toggle">
+              <button type="button" id="btn-straight" class="active">定額法</button>
+              <button type="button" id="btn-declining">定率法（200％）</button>
+            </div>
+            <div class="hint" id="method-hint" style="margin-top:8px;">毎年同じ金額を償却。計算がシンプルで、費用が毎期一定になります。</div>
+          </div>
+          <div class="sync-row">
+            <div class="copy">選択中の方式なら、1年目の償却費は <b id="sync-value" class="mono">—</b></div>
+            <button class="sync-btn" id="syncDepBtn" type="button">①の償却費に反映する</button>
+          </div>
+        </div>
+        <div>
+          <p class="chart-title">帳簿価額の推移（定額法 vs 定率法）</p>
+          <div class="legend">
+            <span><i style="background:#2F6F62"></i>定額法</span>
+            <span><i style="background:#AD7C24"></i>定率法</span>
+          </div>
+          <svg id="chart-book" viewBox="0 0 440 260"></svg>
+        </div>
+      </div>
+
+      <div class="asset-metrics">
+        <div class="metric">
+          <div class="m-label">投資回収期間（概算）</div>
+          <div class="m-value" id="m-payback">—</div>
+          <div class="m-sub">取得価額 ÷ 現在のEBITDA（①の値）</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">損益分岐稼働率の目安</div>
+          <div class="m-value" id="m-bepUtil">— <span class="flag" id="flag-util"></span></div>
+          <div class="m-sub">今の売上が今の稼働率で生まれている前提の試算</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">耐用年数到達時点の帳簿価額</div>
+          <div class="m-value" id="m-bookEnd">—</div>
+          <div class="m-sub">選択中の方式で耐用年数を終えたときの残存簿価</div>
+        </div>
+      </div>
+      <p class="asset-note">
+        ・定額法は毎年の償却費が一定なので、固定費の見通しが立てやすい一方、初期の負担感は定率法より軽くなります。<br>
+        ・定率法は初年度の償却費が大きく、年を追うごとに減っていきます。設備の価値が導入初期に大きく下がる業態（入れ替えの早い機材など）と相性があります。<br>
+        ・稼働率が下がっても償却費などの固定費は変わらないため、レンタル事業では「稼働率の見積り」が採算を左右する一番のリスク要因になります。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ GLOSSARY ============ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">05</span>
       <h2>用語のつながり</h2>
     </div>
     <div class="glossary">
@@ -300,6 +411,22 @@
       <details class="g-item">
         <summary><span class="tag">営業利益</span>本業の儲け<span class="plus">＋</span></summary>
         <div class="g-body">会社の本業でどれだけ利益が出たかを示す数字。<br>管理会計では「限界利益 − 固定費」、財務会計では「売上総利益 − 販管費」として計算されますが、どちらの道を通っても同じ金額にたどり着きます。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">固定資産</span>投資してから使う資産<span class="plus">＋</span></summary>
+        <div class="g-body">レンタル業における貸出用の機材・設備のように、1年以上にわたって使う高額な資産。買った年に全額を費用にはせず、耐用年数にわたって少しずつ「償却費」として費用化します。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">定額法・定率法</span>償却費の計算方法<span class="plus">＋</span></summary>
+        <div class="g-body"><b>定額法</b>は毎年同じ金額を償却する方法、<b>定率法</b>は期首の帳簿価額に一定の率をかけるため初年度ほど償却費が大きく、年々減っていく方法です。どちらを選んでも資産の取得価額の合計（最終的な償却費の総額）は同じになります。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">稼働率</span>レンタル業特有のリスク要因<span class="plus">＋</span></summary>
+        <div class="g-body">保有する資産のうち、実際に貸し出されている割合。レンタル業の収益は稼働率に比例しますが、償却費を含む固定費は稼働率に関係なく一定額発生します。そのため稼働率が想定を下回ると、収益だけが減って固定費はそのまま残り、利益を強く圧迫します。</div>
+      </details>
+      <details class="g-item">
+        <summary><span class="tag">投資回収期間</span>何年で元が取れるか<span class="plus">＋</span></summary>
+        <div class="g-body">固定資産の取得価額を、その資産が生み出す年間のキャッシュ（営業利益＋償却費＝EBITDA）で割った年数。この期間が耐用年数より十分短いほど、投資としての安全性が高いと考えられます。</div>
       </details>
     </div>
   </section>
@@ -469,7 +596,137 @@ function render(){
   drawWaterfall('chart-cvp', buildCvpSteps(d));
   drawWaterfall('chart-fin', buildFinSteps(d));
   updateMetrics(d);
+  updateAsset(d);
 }
+
+/* ===================== Fixed asset / depreciation (rental business) ===================== */
+let depMethod = 'straight'; // 'straight' | 'declining'
+
+function straightLineSchedule(cost, life){
+  const annual = cost / life;
+  const sched = [];
+  let book = cost;
+  for(let yr = 1; yr <= life; yr++){
+    book = Math.max(book - annual, 0);
+    sched.push({yr, dep: annual, book});
+  }
+  return sched;
+}
+
+function decliningBalanceSchedule(cost, life){
+  const rate = Math.min(2/life, 1);
+  const sched = [];
+  let book = cost;
+  for(let yr = 1; yr <= life; yr++){
+    let dep = yr === life ? book : book * rate;
+    book = Math.max(book - dep, 0);
+    sched.push({yr, dep, book});
+  }
+  return sched;
+}
+
+function drawBookValueChart(svgId, straightSched, decliningSched, cost, life){
+  const svg = $(svgId);
+  svg.innerHTML = '';
+  const W = 440, H = 260;
+  const padL = 46, padR = 14, padT = 16, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const x = yr => padL + (plotW * (yr/life));
+  const y = v => padT + plotH - (plotH * (v/cost || 0));
+
+  // axes
+  svg.appendChild(el('line', {x1:padL, y1:padT, x2:padL, y2:H-padB, class:'axis-line'}));
+  svg.appendChild(el('line', {x1:padL, y1:H-padB, x2:W-padR, y2:H-padB, class:'axis-line'}));
+
+  // y labels (0 and cost)
+  [0, cost].forEach(v => {
+    const t = el('text', {x: padL-8, y: y(v)+4, 'text-anchor':'end', class:'bar-label'});
+    t.textContent = fmt(v);
+    svg.appendChild(t);
+    svg.appendChild(el('line', {x1:padL, y1:y(v), x2:W-padR, y2:y(v), stroke:'#D8DED1', 'stroke-width':0.6}));
+  });
+
+  // x labels (years)
+  for(let yr = 0; yr <= life; yr++){
+    if(life > 10 && yr % 2 !== 0 && yr !== life) continue;
+    const t = el('text', {x: x(yr), y: H-padB+16, 'text-anchor':'middle', class:'bar-label'});
+    t.textContent = yr;
+    svg.appendChild(t);
+  }
+
+  function pathFor(sched, color){
+    let pts = [[0, cost]].concat(sched.map(s => [s.yr, s.book]));
+    const d = pts.map((p,i) => (i===0?'M':'L') + x(p[0]).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(' ');
+    svg.appendChild(el('path', {d, fill:'none', stroke:color, 'stroke-width':2.2}));
+    pts.forEach(p => {
+      svg.appendChild(el('circle', {cx:x(p[0]), cy:y(p[1]), r:2.6, fill:color}));
+    });
+  }
+  pathFor(straightSched, '#2F6F62');
+  pathFor(decliningSched, '#AD7C24');
+}
+
+function updateAsset(d){
+  const cost = +$('assetCost').value;
+  const life = +$('assetLife').value;
+  const util = +$('utilRate').value;
+  $('v-assetCost').textContent = fmt(cost);
+  $('v-assetLife').textContent = life;
+  $('v-utilRate').textContent = util;
+
+  const straightSched = straightLineSchedule(cost, life);
+  const decliningSched = decliningBalanceSchedule(cost, life);
+  drawBookValueChart('chart-book', straightSched, decliningSched, cost, life);
+
+  const activeSched = depMethod === 'straight' ? straightSched : decliningSched;
+  const firstYearDep = activeSched[0].dep;
+  const endBook = activeSched[activeSched.length-1].book;
+
+  $('sync-value').textContent = fmt(firstYearDep) + ' 百万円 / 年';
+  $('m-bookEnd').textContent = fmt(endBook);
+
+  // payback period based on current PL's EBITDA
+  const payback = d.ebitda > 0 ? cost / d.ebitda : NaN;
+  $('m-payback').textContent = isFinite(payback) ? payback.toFixed(1) + ' 年' : '算出不可';
+
+  // break-even utilization: assumes current sales were generated at current util rate
+  const bepUtilEl = $('m-bepUtil');
+  if(d.sales > 0 && isFinite(d.bep)){
+    const neededUtil = util * (d.bep / d.sales);
+    const warnState = neededUtil > 100;
+    bepUtilEl.innerHTML = pct(neededUtil/100) + ' <span class="flag ' + (warnState ? 'warn' : 'ok') + '">' + (warnState ? '稼働率不足の懸念' : '現状の稼働率で到達可') + '</span>';
+  } else {
+    bepUtilEl.innerHTML = '—';
+  }
+}
+
+function setMethod(method){
+  depMethod = method;
+  $('btn-straight').classList.toggle('active', method==='straight');
+  $('btn-declining').classList.toggle('active', method==='declining');
+  $('method-hint').textContent = method === 'straight'
+    ? '毎年同じ金額を償却。計算がシンプルで、費用が毎期一定になります。'
+    : '期首の帳簿価額に一定率をかけて計算。初年度の償却費が大きく、年々減っていきます。';
+  render();
+}
+
+$('btn-straight').addEventListener('click', () => setMethod('straight'));
+$('btn-declining').addEventListener('click', () => setMethod('declining'));
+['assetCost','assetLife','utilRate'].forEach(id => $(id).addEventListener('input', render));
+
+$('syncDepBtn').addEventListener('click', () => {
+  const cost = +$('assetCost').value;
+  const life = +$('assetLife').value;
+  const sched = depMethod === 'straight' ? straightLineSchedule(cost, life) : decliningBalanceSchedule(cost, life);
+  const firstYearDep = Math.round(sched[0].dep);
+  const depSlider = $('dep');
+  if(firstYearDep > +depSlider.max){
+    depSlider.max = Math.ceil(firstYearDep/10)*10;
+  }
+  depSlider.value = Math.max(+depSlider.min, Math.min(firstYearDep, +depSlider.max));
+  render();
+});
 
 ids.forEach(id => $(id).addEventListener('input', render));
 render();
